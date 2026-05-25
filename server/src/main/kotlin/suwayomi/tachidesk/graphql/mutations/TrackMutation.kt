@@ -148,6 +148,36 @@ class TrackMutation {
         }
     }
 
+    data class BindTrackRecordInput(
+        val clientMutationId: String? = null,
+        val mangaId: Int,
+        val trackRecordId: Int,
+    )
+
+    data class BindTrackRecordPayload(
+        val clientMutationId: String?,
+        val trackRecord: TrackRecordType,
+    )
+
+    @RequireAuth
+    fun bindTrackRecord(input: BindTrackRecordInput): CompletableFuture<BindTrackRecordPayload?> {
+        val (clientMutationId, mangaId, trackRecordId) = input
+
+        return future {
+            val boundTrackRecordId = Track.bindTrackRecord(mangaId, trackRecordId)
+
+            val trackRecord =
+                transaction {
+                    TrackRecordTable.selectAll().where { TrackRecordTable.id eq boundTrackRecordId }.first()
+                }
+
+            BindTrackRecordPayload(
+                clientMutationId,
+                TrackRecordType(trackRecord),
+            )
+        }
+    }
+
     data class FetchTrackInput(
         val clientMutationId: String? = null,
         val recordId: Int,
@@ -215,6 +245,8 @@ class TrackMutation {
     data class TrackProgressInput(
         val clientMutationId: String? = null,
         val mangaId: Int,
+        @GraphQLDescription("Set to false to return local track records without syncing reading progress to the remote tracker")
+        val syncRemote: Boolean? = null,
     )
 
     data class TrackProgressPayload(
@@ -224,10 +256,12 @@ class TrackMutation {
 
     @RequireAuth
     fun trackProgress(input: TrackProgressInput): CompletableFuture<TrackProgressPayload?> {
-        val (clientMutationId, mangaId) = input
+        val (clientMutationId, mangaId, syncRemote) = input
 
         return future {
-            Track.trackChapter(mangaId)
+            if (syncRemote != false) {
+                Track.trackChapter(mangaId)
+            }
             val trackRecords =
                 transaction {
                     TrackRecordTable

@@ -208,7 +208,7 @@ jobs:
           path: release
 
       - name: Checkout Preview branch
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           repository: "korason7117/Suwayomi-Server-preview"
           ref: main
